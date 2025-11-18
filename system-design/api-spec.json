@@ -1,0 +1,256 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OpenAPI definition",
+    "version": "v0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Generated server url"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Reservations",
+      "description": "Reservation management APIs for diners and staffs"
+    }
+  ],
+  "paths": {
+    "/api/v1/reservations": {
+      "post": {
+        "tags": [
+          "Reservations"
+        ],
+        "summary": "Create a reservation",
+        "description": "Creates a reservation for a given room/date/time slot after validating capacity, spend, and availability.",
+        "operationId": "createReservation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReservationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Reservation created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservationResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Slot already booked",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateReservationRequest": {
+        "type": "object",
+        "description": "Payload used to create a reservation",
+        "properties": {
+          "roomId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Room identifier"
+          },
+          "reservationDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Reservation date",
+            "example": "2025-11-27"
+          },
+          "timeSlot": {
+            "type": "string",
+            "description": "Time slot for the reservation",
+            "enum": [
+              "BREAKFAST",
+              "LUNCH",
+              "DINNER",
+              "LATE_NIGHT"
+            ]
+          },
+          "partySize": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Party size",
+            "example": 12,
+            "minimum": 1
+          },
+          "estimatedSpend": {
+            "$ref": "#/components/schemas/MonetaryAmount",
+            "description": "Estimated spend for the booking (amount + currency)"
+          },
+          "specialRequests": {
+            "type": "string",
+            "description": "Optional special requests such as dietary restrictions"
+          },
+          "diner": {
+            "$ref": "#/components/schemas/Diner",
+            "description": "Diner placing the reservation"
+          }
+        },
+        "required": [
+          "diner",
+          "reservationDate",
+          "roomId",
+          "timeSlot"
+        ]
+      },
+      "Diner": {
+        "type": "object",
+        "description": "Diner contact information",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Diner full name",
+            "example": "Sam Smith",
+            "minLength": 1
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Diner email address",
+            "example": "sam.smith@example.com",
+            "minLength": 1
+          },
+          "phone": {
+            "type": "string",
+            "description": "Phone number (E.511)",
+            "example": "+13087469999",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "email",
+          "name",
+          "phone"
+        ]
+      },
+      "MonetaryAmount": {
+        "type": "object",
+        "description": "Monetary amount representation",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "description": "Amount",
+            "example": 1000
+          },
+          "currency": {
+            "type": "string",
+            "description": "ISO currency code",
+            "example": "USD",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "amount",
+          "currency"
+        ]
+      },
+      "ReservationResponse": {
+        "type": "object",
+        "description": "Reservation representation returned by the API",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Reservation identifier"
+          },
+          "roomId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Room identifier"
+          },
+          "restaurantId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Restaurant identifier"
+          },
+          "reservationDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Reservation date"
+          },
+          "timeSlot": {
+            "type": "string",
+            "description": "Time slot booked",
+            "enum": [
+              "BREAKFAST",
+              "LUNCH",
+              "DINNER",
+              "LATE_NIGHT"
+            ]
+          },
+          "partySize": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Party size"
+          },
+          "status": {
+            "type": "string",
+            "description": "Current reservation status",
+            "enum": [
+              "PENDING",
+              "CONFIRMED",
+              "CANCELLED"
+            ]
+          },
+          "dinerName": {
+            "type": "string",
+            "description": "Diner name"
+          },
+          "dinerEmail": {
+            "type": "string",
+            "description": "Diner email"
+          },
+          "dinerPhone": {
+            "type": "string",
+            "description": "Diner phone number"
+          },
+          "specialRequests": {
+            "type": "string",
+            "description": "Special requests recorded for the reservation"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation timestamp"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last update timestamp"
+          }
+        }
+      }
+    }
+  }
+}

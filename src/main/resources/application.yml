@@ -1,5 +1,24 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/pdrs
+    username: pdrs
+    password: pdrs
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  cache:
+    type: simple
+
 management:
   endpoints:
     web:
       exposure:
         include: health, info
+
+logging:
+  level:
+    root: INFO
+    com.opentable.reservation: DEBUG
+server:
+  port: 8080
