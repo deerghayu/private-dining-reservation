@@ -7,6 +7,7 @@ import com.opentable.reservation.model.TimeSlot;
 import com.opentable.reservation.repository.ReservationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +34,7 @@ public class AvailabilityService {
     /**
      * Gets the availability of time slots for a room between specified dates.
      */
+    @Cacheable(value = "availability", key = "#roomId + '_' + #startDate + '_' + #endDate")
     @Transactional(readOnly = true)
     public AvailabilityResponse getAvailability(UUID roomId, LocalDate startDate, LocalDate endDate) {
         log.debug("Calculating availability for room {} between {} and {}", roomId, startDate, endDate);

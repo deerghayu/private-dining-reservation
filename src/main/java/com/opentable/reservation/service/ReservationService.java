@@ -16,6 +16,7 @@ import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
@@ -44,6 +45,7 @@ public class ReservationService {
      * Applies all business rules and creates a reservation. Throws {@link BusinessException}
      * if any validation fails and {@link RoomAlreadyBookedException} if the slot is already reserved.
      */
+    @CacheEvict(value = "availability", allEntries = true)
     @Transactional
     public ReservationResponse createReservation(@Valid CreateReservationRequest reservationRequest) {
         log.info("Creating reservation for room {} on {} ({})", reservationRequest.roomId(), reservationRequest.reservationDate(), reservationRequest.timeSlot());
@@ -132,6 +134,7 @@ public class ReservationService {
      * Cancels an existing reservation if it's not already cancelled or in the past.
      * Throws {@link BusinessException} if cancellation is not allowed.
      */
+    @CacheEvict(value = "availability", allEntries = true)
     @Transactional
     public ReservationResponse cancelReservation(UUID reservationId, String cancelledBy, String reason) {
         Reservation reservation = getEntity(reservationId);

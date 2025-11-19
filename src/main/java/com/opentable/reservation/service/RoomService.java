@@ -5,6 +5,7 @@ import com.opentable.reservation.model.Restaurant;
 import com.opentable.reservation.model.Room;
 import com.opentable.reservation.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -22,6 +23,7 @@ public class RoomService {
     /**
      * Finds all rooms for a given restaurant.
      */
+    @Cacheable(value = "rooms", key = "#restaurant.id")
     public List<Room> findByRestaurant(Restaurant restaurant) {
         return roomRepository.findByRestaurant(restaurant);
     }
@@ -30,6 +32,7 @@ public class RoomService {
      * Retrieves a specific room by its ID and associated restaurant ID.
      * Throws NotFoundException if the room does not exist.
      */
+    @Cacheable(value = "rooms", key = "#roomId")
     public Room get(UUID restaurantId, UUID roomId) {
         return roomRepository.findByIdAndRestaurantId(roomId, restaurantId)
                 .orElseThrow(() -> new NotFoundException("Room %s not found".formatted(roomId)));
