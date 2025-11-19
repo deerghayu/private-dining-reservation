@@ -14,7 +14,7 @@ public record AvailabilityResponse(
 ) {
     @Schema(description = "Availability for a single date")
     public record DayAvailability(
-            @Schema(description = "Date of availability entry", example = "2025-01-15") LocalDate date,
+            @Schema(description = "Date of availability entry", example = "2025-11-27") LocalDate date,
             @Schema(description = "Slots for the given date") List<SlotAvailability> slots
     ) {
     }

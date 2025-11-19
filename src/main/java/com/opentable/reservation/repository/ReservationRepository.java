@@ -4,6 +4,8 @@ import com.opentable.reservation.model.Reservation;
 import com.opentable.reservation.model.ReservationStatus;
 import com.opentable.reservation.model.TimeSlot;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -17,4 +19,13 @@ public interface ReservationRepository extends JpaRepository<Reservation, UUID> 
             TimeSlot timeSlot,
             List<ReservationStatus> statuses
     );
+
+    List<Reservation> findByDinerEmailIgnoreCase(String dinerEmail);
+
+    @Query("select r from Reservation r where r.dinerEmail = :email and r.reservationDate >= :from")
+    List<Reservation> findUpcomingReservations(@Param("email") String email, @Param("from") LocalDate from);
+
+    List<Reservation> findByRestaurantId(UUID restaurantId);
+
+    List<Reservation> findByRoomIdAndReservationDateBetween(UUID roomId, LocalDate start, LocalDate end);
 }
