@@ -47,7 +47,7 @@ docker-compose up -d
 **Step 2: Run Application**
 
 ```bash
-  ./mvnw spring-boot:run
+./mvnw spring-boot:run
 ```
 
 **Step 3: Access Swagger UI**
@@ -119,13 +119,13 @@ Schema migrations run automatically via Flyway on application startup.
 
 ```bash
 # Run all tests
-  ./mvnw test
+./mvnw test
 
 # Run specific test
 ./mvnw test -Dtest=ConcurrencyTest
 
 # Generate coverage report
-  ./mvnw test jacoco:report
+./mvnw test jacoco:report
 # View report at: target/site/jacoco/index.html
 ```
 
