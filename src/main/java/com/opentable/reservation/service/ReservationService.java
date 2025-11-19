@@ -2,6 +2,8 @@ package com.opentable.reservation.service;
 
 import com.opentable.reservation.dto.CreateReservationRequest;
 import com.opentable.reservation.dto.ReservationResponse;
+import com.opentable.reservation.event.ReservationCancelledEvent;
+import com.opentable.reservation.event.ReservationCreatedEvent;
 import com.opentable.reservation.exception.BusinessException;
 import com.opentable.reservation.exception.RoomAlreadyBookedException;
 import com.opentable.reservation.exception.NotFoundException;
@@ -14,12 +16,16 @@ import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 /**
  * Service responsible for creating, listing, and cancelling reservations while enforcing
@@ -31,8 +37,8 @@ import java.util.UUID;
 public class ReservationService {
 
     private final RoomRepository roomRepository;
-    private final AvailabilityService availabilityService;
     private final ReservationRepository reservationRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Applies all business rules and creates a reservation. Throws {@link BusinessException}
@@ -67,12 +73,21 @@ public class ReservationService {
                 throw new BusinessException("Estimated spend must satisfy minimum");
             }
         }
-        if (!availabilityService.isSlotAvailable(room.getId(), reservationRequest.reservationDate(), reservationRequest.timeSlot())) {
-            log.warn("Room {} already booked on {} {}", room.getId(), reservationRequest.reservationDate(), reservationRequest.timeSlot());
+
+        // Check for existing active reservations for this slot
+        // This application-level check works with the database constraints to prevent double-booking
+        boolean hasActiveReservation = reservationRepository.existsByRoomIdAndReservationDateAndTimeSlotAndStatusIn(
+                reservationRequest.roomId(),
+                reservationRequest.reservationDate(),
+                reservationRequest.timeSlot(),
+                List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED)
+        );
+
+        if (hasActiveReservation) {
+            log.warn("Slot already booked: room={}, date={}, slot={}", room.getId(), reservationRequest.reservationDate(), reservationRequest.timeSlot());
             throw new RoomAlreadyBookedException(reservationRequest.reservationDate(), reservationRequest.timeSlot());
         }
 
-        //TODO: it's possible to extract method
         Reservation reservation = new Reservation();
         reservation.setRoom(room);
         reservation.setRestaurant(room.getRestaurant());
@@ -84,9 +99,13 @@ public class ReservationService {
         reservation.setDinerPhone(reservationRequest.diner().phone());
         reservation.setSpecialRequests(reservationRequest.specialRequests());
         reservation.setStatus(ReservationStatus.CONFIRMED);
-        Reservation saved = reservationRepository.save(reservation);
-        //TODO: Publish event
-        return ReservationResponse.from(saved);
+        Reservation savedReservation = reservationRepository.save(reservation);
+
+        // Publish event for asynchronous processing (notifications, analytics, etc.)
+        publishReservationCreatedEvent(savedReservation);
+
+        log.info("Successfully created reservation {} for room {} on {}", savedReservation.getId(), room.getId(), savedReservation.getReservationDate());
+        return ReservationResponse.from(savedReservation);
     }
 
     /**
@@ -130,32 +149,83 @@ public class ReservationService {
         reservation.setCancelledAt(java.time.OffsetDateTime.now());
         Reservation cancelledReservation = reservationRepository.save(reservation);
 
-        //TODO: Publish cancellation event
+        // Publish cancellation event for asynchronous processing
+        publishReservationCancelledEvent(cancelledReservation);
+
         return ReservationResponse.from(cancelledReservation);
     }
 
     /**
      * Lists all reservations for a diner, optionally filtering to only upcoming reservations.
+     * Returns paginated results sorted by reservation date (descending).
      */
-    public List<ReservationResponse> listReservationsByDiner(String dinerEmail, boolean upcomingOnly) {
-        List<Reservation> reservations = upcomingOnly
-                ? reservationRepository.findUpcomingReservations(dinerEmail, LocalDate.now())
-                : reservationRepository.findByDinerEmailIgnoreCase(dinerEmail);
+    public Page<ReservationResponse> listReservationsByDiner(String dinerEmail, boolean upcomingOnly, Pageable pageable) {
+        Page<Reservation> reservations = upcomingOnly
+                ? reservationRepository.findUpcomingReservations(dinerEmail, LocalDate.now(), pageable)
+                : reservationRepository.findByDinerEmailIgnoreCase(dinerEmail, pageable);
 
-        List<ReservationResponse> reservationsByDiner = reservations.stream().map(ReservationResponse::from).toList();
+        Page<ReservationResponse> reservationsByDiner = reservations.map(ReservationResponse::from);
 
-        log.info("Found {} reservations for diner {} (upcomingOnly={})",
-                reservationsByDiner.size(), dinerEmail, upcomingOnly);
+        log.info("Found {} reservations for diner {} (upcomingOnly={}, page={}/{})",
+                reservationsByDiner.getContent().size(), dinerEmail, upcomingOnly,
+                reservationsByDiner.getNumber(), reservationsByDiner.getTotalPages());
 
         return reservationsByDiner;
     }
 
     /**
      * Lists all reservations for a restaurant. Intended for staff use.
+     * Returns paginated results sorted by reservation date (descending).
      */
-    public List<ReservationResponse> listReservationsByRestaurant(UUID restaurantId) {
-        return reservationRepository.findByRestaurantId(restaurantId).stream()
-                .map(ReservationResponse::from)
-                .toList();
+    public Page<ReservationResponse> listReservationsByRestaurant(UUID restaurantId, Pageable pageable) {
+        Page<Reservation> reservations = reservationRepository.findByRestaurantId(restaurantId, pageable);
+        return reservations.map(ReservationResponse::from);
+    }
+
+    /**
+     * Publishes a ReservationCreatedEvent for asynchronous processing.
+     * Listeners can use this event to send confirmation emails, update caches, or track analytics.
+     */
+    private void publishReservationCreatedEvent(Reservation reservation) {
+        ReservationCreatedEvent event = new ReservationCreatedEvent(
+                reservation.getId(),
+                reservation.getRestaurant().getId(),
+                reservation.getRoom().getId(),
+                reservation.getRoom().getName(),
+                reservation.getReservationDate(),
+                reservation.getTimeSlot(),
+                reservation.getPartySize(),
+                reservation.getDinerName(),
+                reservation.getDinerEmail(),
+                reservation.getDinerPhone(),
+                reservation.getSpecialRequests(),
+                reservation.getCreatedAt()
+        );
+
+        log.debug("Publishing ReservationCreatedEvent for reservation {}", reservation.getId());
+        eventPublisher.publishEvent(event);
+    }
+
+    /**
+     * Publishes a ReservationCancelledEvent for asynchronous processing.
+     * Listeners can use this event to send cancellation notifications or update availability caches.
+     */
+    private void publishReservationCancelledEvent(Reservation reservation) {
+        ReservationCancelledEvent event = new ReservationCancelledEvent(
+                reservation.getId(),
+                reservation.getRestaurant().getId(),
+                reservation.getRoom().getId(),
+                reservation.getRoom().getName(),
+                reservation.getReservationDate(),
+                reservation.getTimeSlot(),
+                reservation.getDinerName(),
+                reservation.getDinerEmail(),
+                reservation.getCancelledBy(),
+                reservation.getCancellationReason(),
+                reservation.getCancelledAt()
+        );
+
+        log.debug("Publishing ReservationCancelledEvent for reservation {}", reservation.getId());
+        eventPublisher.publishEvent(event);
     }
 }

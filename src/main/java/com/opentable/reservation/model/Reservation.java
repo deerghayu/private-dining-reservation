@@ -17,9 +17,12 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-@Table(name = "reservations",
-        uniqueConstraints = @UniqueConstraint(name = "uk_room_date_slot_status",
-                columnNames = {"room_id", "reservation_date", "time_slot", "status"}))
+@Table(name = "reservations")
+// Note: Double-booking prevention is handled by a partial unique index in PostgreSQL:
+// CREATE UNIQUE INDEX uk_room_date_slot_active ON reservations (room_id, reservation_date, time_slot)
+// WHERE status IN ('PENDING', 'CONFIRMED');
+// This allows rebooking of cancelled slots while preventing double-booking of active reservations.
+// Partial indexes cannot be expressed in JPA annotations, so it's defined in the migration file.
 public class Reservation {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -65,7 +68,7 @@ public class Reservation {
     private String specialRequests;
 
     @Column(name = "cancellation_reason", length = 500)
-    private String cancellationReason; //TODO: May need a Cancellation class to include cancelledBy
+    private String cancellationReason;
 
     @Column(name = "cancelled_by")
     private String cancelledBy;

@@ -53,7 +53,6 @@ public class DataSeeder implements CommandLineRunner {
                 .minCapacity(1)
                 .maxCapacity(30)
                 .active(true)
-                .currency("USD")
                 .minimumSpend(minimumSpend)
                 .build();
 

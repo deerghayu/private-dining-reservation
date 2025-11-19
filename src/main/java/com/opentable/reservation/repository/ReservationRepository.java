@@ -3,6 +3,8 @@ package com.opentable.reservation.repository;
 import com.opentable.reservation.model.Reservation;
 import com.opentable.reservation.model.ReservationStatus;
 import com.opentable.reservation.model.TimeSlot;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,12 +22,12 @@ public interface ReservationRepository extends JpaRepository<Reservation, UUID> 
             List<ReservationStatus> statuses
     );
 
-    List<Reservation> findByDinerEmailIgnoreCase(String dinerEmail);
+    Page<Reservation> findByDinerEmailIgnoreCase(String dinerEmail, Pageable pageable);
 
     @Query("select r from Reservation r where r.dinerEmail = :email and r.reservationDate >= :from")
-    List<Reservation> findUpcomingReservations(@Param("email") String email, @Param("from") LocalDate from);
+    Page<Reservation> findUpcomingReservations(@Param("email") String email, @Param("from") LocalDate from, Pageable pageable);
 
-    List<Reservation> findByRestaurantId(UUID restaurantId);
+    Page<Reservation> findByRestaurantId(UUID restaurantId, Pageable pageable);
 
     List<Reservation> findByRoomIdAndReservationDateBetween(UUID roomId, LocalDate start, LocalDate end);
 }

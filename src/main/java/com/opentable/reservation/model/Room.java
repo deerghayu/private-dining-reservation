@@ -24,7 +24,7 @@ public class Room {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "restaurant_id", nullable = false)
     private Restaurant restaurant;
 
@@ -47,10 +47,7 @@ public class Room {
     @Embedded
     private MinimumSpend minimumSpend;
 
-    @NotBlank
-    private String currency;
-
-    @Column(name = "is_active")
+    @Builder.Default
     private boolean active = true;
 
     @CreationTimestamp
@@ -77,11 +74,11 @@ public class Room {
     public static class MinimumSpend {
 
         @NotNull
-        @Column(name = "min_spend_amount")
+        @Column(name = "minimum_spend_amount")
         private BigDecimal amount;
 
         @NotBlank
-        @Column(name = "min_spend_currency")
+        @Column(name = "minimum_spend_currency")
         private String currency;
     }
 }

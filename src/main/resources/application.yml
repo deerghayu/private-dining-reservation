@@ -1,14 +1,35 @@
 spring:
+  application:
+    name: Private Dining Reservation System
   datasource:
-    url: jdbc:postgresql://localhost:5432/pdrs
-    username: pdrs
-    password: pdrs
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/pdrs}
+    username: ${DB_USERNAME:pdrs}
+    password: ${DB_PASSWORD:pdrs}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     open-in-view: false
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
   cache:
     type: simple
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
 
 management:
   endpoints:
