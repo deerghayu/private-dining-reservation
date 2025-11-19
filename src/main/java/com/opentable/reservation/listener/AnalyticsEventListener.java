@@ -21,7 +21,7 @@ public class AnalyticsEventListener {
     @Async
     @EventListener
     public void trackReservationCreated(ReservationCreatedEvent event) {
-        log.info("📊 [ANALYTICS] Reservation created - Restaurant: {}, Room: {}, TimeSlot: {}, PartySize: {}, Date: {}",
+        log.info("[ANALYTICS] Reservation created - Restaurant: {}, Room: {}, TimeSlot: {}, PartySize: {}, Date: {}",
                 event.getRestaurantId(),
                 event.getRoomName(),
                 event.getTimeSlot(),
@@ -41,7 +41,7 @@ public class AnalyticsEventListener {
     @Async
     @EventListener
     public void trackReservationCancelled(ReservationCancelledEvent event) {
-        log.info("📊 [ANALYTICS] Reservation cancelled - Restaurant: {}, Room: {}, CancelledBy: {}",
+        log.info("[ANALYTICS] Reservation cancelled - Restaurant: {}, Room: {}, CancelledBy: {}",
                 event.getRestaurantId(),
                 event.getRoomName(),
                 event.getCancelledBy());
@@ -60,7 +60,7 @@ public class AnalyticsEventListener {
      * In production, this would use Micrometer, StatsD, or a custom metrics client.
      */
     private void trackMetric(String metricName, Number value, Object... tags) {
-        log.debug("📈 Metric tracked: {} = {} (tags: {})", metricName, value, tags);
+        log.debug(" Metric tracked: {} = {} (tags: {})", metricName, value, tags);
 
         // Production implementation:
         // meterRegistry.counter(metricName, Tags.of(convertToTags(tags))).increment(value.doubleValue());
